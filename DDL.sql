@@ -1,3 +1,5 @@
+set global log_bin_trust_function_creators=TRUE;
+
 drop table if exists patient_condition;
 drop table if exists covid_test;
 drop table if exists waiting_patient;

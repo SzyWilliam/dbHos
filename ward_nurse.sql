@@ -16,7 +16,7 @@ begin
         temperature,
         symptoms,
         record_status,
-        recent_covid_test_id(patient_id)
+        recent_covid_test_id(patient_id, now())
     );
 
 end $$

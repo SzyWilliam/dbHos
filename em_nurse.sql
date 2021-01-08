@@ -1,5 +1,3 @@
-set global log_bin_trust_function_creators=TRUE;
-
 drop function if exists em_add_patient;
 drop procedure if exists em_query_patient_in_hospital;
 
@@ -36,11 +34,16 @@ begin
     from patient natural join patient_condition natural join take_care, covid_test
     where
     (patient_condition.record_date = recent_patient_condition_date(patient.patient_id) or recent_patient_condition_date(patient.patient_id) is null) and
-    (recent_covid_test_id(patient.patient_id) = covid_test.test_id) and 
+    (recent_covid_test_id(patient.patient_id, now()) = covid_test.test_id) and 
     (take_care.region = region) and 
     (covid_test.severity = severity) and 
     (patient.patient_status = patient_status or (patient_status is null and patient.patient_status is null)) ;
 
+end $$
+
+create procedure em_query_waiting_patient()
+begin
+    select * from patient natural join waiting_patient;
 end $$
 
 DELIMITER ;
