@@ -6,6 +6,7 @@ drop procedure if exists doctor_query_patient_to_leave_hospital;
 drop procedure if exists doctor_modify_patient_status;
 drop procedure if exists doctor_modify_patient_severity;
 drop procedure if exists doctor_do_covid_test;
+drop procedure if exists doctor_drop_patient;
 
 DELIMITER $$
 
@@ -37,12 +38,11 @@ end $$
 
 create procedure doctor_query_patient_to_transfer()
 begin
-    select patient_id, patient_name, patient.age, patient.patient_status, take_care.region, ward_num, bed_num, personnel_name as ward_nurse, covid_test.severity
-    from patient natural join take_care natural join covid_test, personnel
+    select patient_id, patient_name, patient.age, patient.patient_status, patient_severity as severity, take_care.region, ward_num, bed_num, personnel_name as ward_nurse
+    from patient natural join take_care, personnel
     where take_care.region = get_personnel_region() 
     and take_care.nurse_id = personnel.personnel_id
-    and covid_test.test_id = recent_covid_test_id(patient_id, now())
-    and covid_test.severity <> take_care.region; 
+    and patient_severity <> take_care.region; 
 end $$
 
 create procedure doctor_modify_patient_status(
@@ -60,8 +60,8 @@ create procedure doctor_modify_patient_severity(
     severity varchar(16)
 )
 begin
-    update covid_test set covid_test.severity = severity
-    where covid_test.test_id = recent_covid_test_id(patient_id, now())
+    update patient set patient_severity = severity
+    where patient.patient_id = patient_id
     and get_patient_region(patient_id) = get_personnel_region();
 end $$
 
@@ -73,14 +73,15 @@ create procedure doctor_do_covid_test(
 begin
     insert into covid_test (patient_id, test_date, test_result, severity)
     values (patient_id, now(), test_result, severity);
+    
+    call doctor_modify_patient_severity(severity);
 end $$
 
 create procedure doctor_query_patient_to_leave_hospital()
 begin
-    select patient_id, patient_name, patient.age, patient.patient_status, take_care.region, ward_num, bed_num, personnel_name as ward_nurse, covid_test.severity
-    from patient natural join take_care natural join covid_test, personnel
+    select patient_id, patient_name, patient.age, patient.patient_status, patient_severity as severity, take_care.region, ward_num, bed_num, personnel_name as ward_nurse
+    from patient natural join take_care personnel
     where take_care.region = get_personnel_region() 
-    and covid_test.test_id = recent_covid_test_id(patient_id, now())
     and take_care.nurse_id = personnel.personnel_id
     and check_patient_if_recovered(patient_id) = 1; 
 end $$

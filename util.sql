@@ -6,8 +6,15 @@ drop function if exists get_patient_region;
 drop function if exists get_temperature_by_date;
 drop function if exists check_patient_if_recovered;
 drop function if exists check_patient_covid_test_passed;
+drop procedure if exists find_empty_nurse_and_bed;
+drop function if exists get_already_take_care;
+drop function if exists get_max_take_care;
+drop procedure if exists personnel_register;
+drop procedure if exists personnel_leave;
 
 DELIMITER $$
+
+
 create function recent_covid_test_id(
     patient_id      int,
     recent_date     timestamp
@@ -30,7 +37,7 @@ end $$
 
 create function recent_patient_condition_date(patient_id int) returns date
 begin
-    declare recent_record_date date;
+    declare recent_record_date date default null;
     with recent_record(patient_id, record_date) as (
         select patient_id, MAX(record_date)
         from patient_condition
@@ -41,6 +48,7 @@ begin
     
     return recent_record_date;
 end $$
+
 
 create function get_current_username() returns varchar(255)
 begin
@@ -141,6 +149,116 @@ begin
     end if;
 
     return 0;
+end $$
+
+create procedure find_empty_nurse_and_bed(
+    in region       varchar(16),
+    out avi         int,
+    out nurse_id    int,
+    out ward_num    int,
+    out bed_num     int
+)
+begin
+    set avi = 0;
+    set nurse_id = -1;
+    set ward_num = -1;
+    set bed_num = -1;
+
+    select min(personnel_id) into nurse_id from personnel
+    where personnel.position = 'ward_nurse'
+    and personnel.region = region
+    and get_already_take_care(personnel.personnel_id) < get_max_take_care(region);
+
+    select min(bed.ward_num) into ward_num
+    from bed
+    where bed.region = region
+    and not exists (
+        select * from take_care
+        where take_care.region = region
+        and take_care.ward_num = bed.ward_num
+        and take_care.bed_num = bed.bed_num
+    );
+
+    select min(bed.bed_num) into bed_num
+    from bed
+    where bed.region = region
+    and bed.ward_num = ward_num
+    and not exists (
+        select * from take_care
+        where take_care.region = region
+        and take_care.ward_num = bed.ward_num
+        and take_care.bed_num = bed.bed_num
+    );
+
+    if nurse_id > 0 and ward_num > 0 and bed_num > 0 then
+        set avi = 1;
+    end if;
+end $$
+
+create function get_already_take_care(
+    nurse_id int
+) returns integer
+begin
+    declare num int default 0;
+    select count(patient_id) into num from take_care
+    where take_care.nurse_id = nurse_id;
+    return num;
+end $$
+
+create function get_max_take_care(
+    region varchar(16)
+) returns integer
+begin
+    if region = 'mild' then
+        return 3;
+    elseif region = 'severe' then
+        return 2;
+    elseif region = 'urgent' then
+        return 1;
+    else
+        return 0;
+    end if;
+end $$
+
+create procedure personnel_register(
+    personnel_name varchar(255),
+    username varchar(255),
+    pwd      varchar(255),
+    age      int,
+    position varchar(32),
+    region   varchar(16)
+)
+begin
+    set @`sql_stmt` = CONCAT("create user '", username, "' identified by '", pwd, "'");
+    PREPARE `stmt` FROM @`sql_stmt`;
+    EXECUTE `stmt`;
+    set @`sql_stmt` = CONCAT("grant all privileges on hospital.* to '", username, "'@'%'");
+    PREPARE `stmt` FROM @`sql_stmt`;
+    EXECUTE `stmt`;
+    DEALLOCATE PREPARE `stmt`;
+    FLUSH PRIVILEGES;
+
+    insert into personnel (username, personnel_name, age, position, region) 
+    values (
+        username, personnel_name, age, position, region
+    );
+end $$
+
+create procedure personnel_leave(
+    personnel_id int
+)
+begin
+    declare username varchar(255);
+    select personnel.username into username
+    from personnel
+    where personnel.personnel_id = personnel_id;
+
+    set @`sql_stmt` = CONCAT("drop user '", username, "'@'%'");
+    PREPARE `stmt` FROM @`sql_stmt`;
+    EXECUTE `stmt`;
+
+    delete from personnel
+    where personnel.personnel_id = personnel_id;
 end $$
 
 DELIMITER ;

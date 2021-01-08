@@ -14,10 +14,12 @@ create table patient
     patient_id   int auto_increment,
     patient_name varchar(255) not null,
     age          int not null,
-    patient_status varchar(32) default null,
-    primary key (patient_id),
+    patient_status varchar(32) default 'under_treatment',
+    patient_severity varchar(16) not null,
 
-    check (patient_status in ('recovered', 'under_treatment', 'dead') or (patient_status is null))
+    primary key (patient_id),
+    check (patient_severity in ('mild', 'severe', 'urgent')),
+    check (patient_status in ('recovered', 'under_treatment', 'dead'))
 );
 
 create table covid_test
@@ -41,7 +43,7 @@ create table personnel
     personnel_name  varchar(255) not null,
     age             int not null,
     position        varchar(32) not null,
-    region          varchar(32),
+    region          varchar(16),
     
 
     primary key (personnel_id),
@@ -52,7 +54,7 @@ create table personnel
 
 create table bed
 (
-    region    varchar(32),
+    region    varchar(16),
     ward_num  int not null,
     bed_num   int not null,
 
@@ -81,7 +83,7 @@ create table take_care
 (
     patient_id      int,
     nurse_id        int,
-    region    varchar(32),
+    region    varchar(16),
     ward_num  int not null,
     bed_num   int not null,
 
@@ -98,5 +100,4 @@ create table waiting_patient
 
     primary key (patient_id),
     foreign key (patient_id) references patient(patient_id)
-
 )
