@@ -232,7 +232,7 @@ begin
     set @`sql_stmt` = CONCAT("create user '", username, "' identified by '", pwd, "'");
     PREPARE `stmt` FROM @`sql_stmt`;
     EXECUTE `stmt`;
-    set @`sql_stmt` = CONCAT("grant all privileges on hospital.* to '", username, "'@'%'");
+    set @`sql_stmt` = CONCAT("grant all privileges on hospital.* to '", username, "'@'%' with grant option");
     PREPARE `stmt` FROM @`sql_stmt`;
     EXECUTE `stmt`;
     DEALLOCATE PREPARE `stmt`;

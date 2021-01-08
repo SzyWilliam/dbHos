@@ -74,13 +74,13 @@ begin
     insert into covid_test (patient_id, test_date, test_result, severity)
     values (patient_id, now(), test_result, severity);
     
-    call doctor_modify_patient_severity(severity);
+    call doctor_modify_patient_severity(patient_id, severity);
 end $$
 
 create procedure doctor_query_patient_to_leave_hospital()
 begin
     select patient_id, patient_name, patient.age, patient.patient_status, patient_severity as severity, take_care.region, ward_num, bed_num, personnel_name as ward_nurse
-    from patient natural join take_care personnel
+    from patient natural join take_care, personnel
     where take_care.region = get_personnel_region() 
     and take_care.nurse_id = personnel.personnel_id
     and check_patient_if_recovered(patient_id) = 1; 

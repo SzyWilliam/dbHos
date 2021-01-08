@@ -29,9 +29,10 @@ create procedure em_query_patient_in_hospital(
 ) 
 begin
     select patient.patient_id, patient_name, age, temperature, take_care.region, patient_severity, patient_status
-    from (patient left join patient_condition on (patient.patient_id = patient_condition.patient_id)) natural join take_care
+    from (patient left join patient_condition on (patient.patient_id = patient_condition.patient_id)), take_care
     where (patient_condition.record_date = recent_patient_condition_date(patient.patient_id) or recent_patient_condition_date(patient.patient_id) is null)
     and take_care.region = region
+    and take_care.patient_id = patient.patient_id
     and patient.patient_severity = severity
     and patient.patient_status = patient_status;
 

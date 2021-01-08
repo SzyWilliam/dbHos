@@ -35,7 +35,7 @@ begin
     select personnel.username into username
     from personnel where personnel.personnel_id = personnel_id;
 
-    if position = 'ward_nurse' and region = get_personnel_region
+    if position = 'ward_nurse' and region = get_personnel_region()
     and not exists (select * from take_care where nurse_id = personnel_id) then
         call personnel_leave(personnel_id);
     end if;
@@ -75,7 +75,7 @@ end $$
 create procedure chief_query_patient_to_leave_hospital()
 begin
     select patient_id, patient_name, patient.age, patient.patient_status, patient_severity as severity, take_care.region, ward_num, bed_num, personnel_name as ward_nurse
-    from patient natural join take_care personnel
+    from patient natural join take_care, personnel
     where take_care.region = get_personnel_region() 
     and take_care.nurse_id = personnel.personnel_id
     and check_patient_if_recovered(patient_id) = 1; 
